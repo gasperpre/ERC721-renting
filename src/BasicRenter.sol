@@ -307,13 +307,13 @@ contract BasicRenter is Ownable2Step {
         rent.to = _order2.to;
         rent.until = until;
 
+        uint256 total = _order1.price * _order2.duration;
+        uint256 fee = total * erc20Tokens[_order1.erc20Token].feePercentage / 10_000;
+
         if(IERC721(_order1.nftContractAddress).ownerOf(_order1.tokenId) != address(this)) {
             owners[_order1.nftContractAddress][_order1.tokenId] = _order1.from;
             IERC721(_order1.nftContractAddress).transferFrom(_order1.from, address(this), _order1.tokenId);
         }
-
-        uint256 total = _order1.price * _order2.duration;
-        uint256 fee = total * erc20Tokens[_order1.erc20Token].feePercentage / 10_000;
 
         ERC20(_order1.erc20Token).safeTransferFrom(_order2.to, address(this), total);
         ERC20(_order1.erc20Token).safeTransfer(_order1.from, total - fee);
@@ -343,8 +343,8 @@ contract BasicRenter is Ownable2Step {
     * - rents[_nftContractAddress][_tokenId].until must be less than block.timestamp
     */
     function retrieveNft(address _nftContractAddress, uint256 _tokenId) external {
-        require(ownerOf(_nftContractAddress, _tokenId) == msg.sender);
-        require(rents[_nftContractAddress][_tokenId].until < block.timestamp);
+        require(ownerOf(_nftContractAddress, _tokenId) == msg.sender, "Not NFT owner");
+        require(rents[_nftContractAddress][_tokenId].until < block.timestamp, "Not expired");
 
         delete rents[_nftContractAddress][_tokenId];
         delete owners[_nftContractAddress][_tokenId];
