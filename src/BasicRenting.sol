@@ -66,7 +66,7 @@ contract BasicRenting is Ownable2Step {
     /*--------------- CONSTANTS ---------------*/
 
     bytes32 constant ORDER_TYPEHASH = keccak256(
-        "Order(address nftContractAddress,address tokenId,address lesor,address lesee,address erc20Token,uint176 price,uint40 duration,uint40 maxExpiration,uint40 salt)"
+        "Order(address nftContractAddress,uint256 tokenId,address lesor,address lesee,address erc20Token,uint136 price,uint40 duration,uint40 maxExpiration,uint40 salt)"
     );
     
     bytes32 immutable DOMAIN_SEPARATOR;
@@ -123,7 +123,7 @@ contract BasicRenting is Ownable2Step {
                 keccak256(
                     "EIP712Domain(string name,string version,uint256 chainId,address verifyingContract)"
                 ),
-                keccak256(bytes("BasicRenter")),
+                keccak256(bytes("BasicRenting")),
                 keccak256(bytes("1")),
                 block.chainid,
                 address(this)
