@@ -11,6 +11,7 @@ import {Ownable2Step} from "@openzeppelin/contracts/access/Ownable2Step.sol";
 import {IERC165} from "@openzeppelin/contracts/interfaces/IERC165.sol";
 
 /**
+* @author gasperpre
 * ERC4907 renting contract.
 * The purpose of this smart contract is to enable ERC721 renting without the need for collateral
 * but it requires NFTs to implement ERC4907 renting standard.
@@ -21,8 +22,6 @@ import {IERC165} from "@openzeppelin/contracts/interfaces/IERC165.sol";
 *
 * NOTICE: This smart contract is NOT audited or even well tested and should NOT be used in
 * production before conducting a security review.
-*
-* Author: gasperpre
 */
 contract ERC4907Renting is Ownable2Step {
     using SafeTransferLib for ERC20;

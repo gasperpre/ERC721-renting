@@ -8,6 +8,7 @@ import {SignatureChecker} from "@openzeppelin/contracts/utils/cryptography/Signa
 import {Ownable2Step} from "@openzeppelin/contracts/access/Ownable2Step.sol";
 
 /**
+* @author gasperpre
 * Basic renting contract.
 * The purpose of this smart contract is to enable ERC721 renting without the need for collateral
 * and without the need for the ERC721 contracts to support any special renting standard.
@@ -19,8 +20,6 @@ import {Ownable2Step} from "@openzeppelin/contracts/access/Ownable2Step.sol";
 *
 * NOTICE: This smart contract is NOT audited or even well tested and should NOT be used in
 * production before conducting a security review.
-*
-* Author: gasperpre
 */
 contract BasicRenting is Ownable2Step {
     using SafeTransferLib for ERC20;
