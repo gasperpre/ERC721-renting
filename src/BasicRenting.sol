@@ -172,25 +172,25 @@ contract BasicRenting is Ownable2Step {
 
     /*--------------- HELPERS ---------------*/
 
-    function hashOrder(Order memory order)
+    function hashOrder(Order memory _order)
         public
         pure
         returns (bytes32 hash)
     {
         return keccak256(abi.encode(
             ORDER_TYPEHASH,
-            order.nftContractAddress,
-            order.lesor,
-            order.lesee,
-            order.erc20Token,
-            order.price,
-            order.duration,
-            order.maxExpiration,
-            order.salt
+            _order.nftContractAddress,
+            _order.lesor,
+            _order.lesee,
+            _order.erc20Token,
+            _order.price,
+            _order.duration,
+            _order.maxExpiration,
+            _order.salt
         ));
     }
 
-    function hashToSign(bytes32 orderHash)
+    function hashToSign(bytes32 _orderHash)
         public
         view
         returns (bytes32 hash)
@@ -198,48 +198,48 @@ contract BasicRenting is Ownable2Step {
         return keccak256(abi.encodePacked(
             "\x19\x01",
             DOMAIN_SEPARATOR,
-            orderHash
+            _orderHash
         ));
     }
     
-    function _requireNotFilledOrCanceled(address signer, bytes32 orderHash) internal view {
-        require(!filledOrCanceled[signer][orderHash], "Already filledOrCanceled");
+    function _requireNotFilledOrCanceled(address _signer, bytes32 _orderHash) internal view {
+        require(!filledOrCanceled[_signer][_orderHash], "Already filledOrCanceled");
     }
 
-    function _requireValidSignature(address signer, bytes32 orderHash, bytes calldata signature) internal view {
+    function _requireValidSignature(address _signer, bytes32 _orderHash, bytes calldata _signature) internal view {
         require(
-                SignatureChecker.isValidSignatureNow(signer, hashToSign(orderHash), signature),
+                SignatureChecker.isValidSignatureNow(_signer, hashToSign(_orderHash), _signature),
                 "Invalid signature"
         );
     }
 
     /**
     * @notice Flag orderHash for signer as filledOrCanceled
-    * @param signer - Order signer address
-    * @param orderHash - Order hash
+    * @param _signer - Order signer address
+    * @param _orderHash - Order hash
     * 
     * requiremetns:
     * - orderHash for signer must not be flaged filledOrCanceled
     */
-    function _fillOrCancelOrder(address signer, bytes32 orderHash) internal {
-        _requireNotFilledOrCanceled(signer, orderHash);
-        filledOrCanceled[signer][orderHash] = true;
+    function _fillOrCancelOrder(address _signer, bytes32 _orderHash) internal {
+        _requireNotFilledOrCanceled(_signer, _orderHash);
+        filledOrCanceled[_signer][_orderHash] = true;
     }
     
     /**
     * @notice Checks if order signature is valid and marks order as filled
-    * @param signer - Order signer address
-    * @param orderHash - Order hash
-    * @param signature - Order signature by the signer
+    * @param _signer - Order signer address
+    * @param _orderHash - Order hash
+    * @param _signature - Order signature by the signer
     * 
     * requiremetns:
-    * - signature must be valid for given orderHash and signer address
-    * - orderHash for signer must not be flaged filledOrCanceled
+    * - _signature must be valid for given orderHash and signer address
+    * - _orderHash for _signer must not be flaged filledOrCanceled
     */
-    function _fillOrder(address signer, bytes32 orderHash, bytes calldata signature) internal {
-            _requireValidSignature(signer, orderHash, signature);
-            _fillOrCancelOrder(signer, orderHash);
-            emit OrderFilled(signer, orderHash);
+    function _fillOrder(address _signer, bytes32 _orderHash, bytes calldata _signature) internal {
+            _requireValidSignature(_signer, _orderHash, _signature);
+            _fillOrCancelOrder(_signer, _orderHash);
+            emit OrderFilled(_signer, _orderHash);
     }
 
     /*--------------- EXTERNAL ---------------*/
