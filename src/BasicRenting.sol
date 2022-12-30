@@ -262,17 +262,15 @@ contract BasicRenting is Ownable2Step {
     * - _order1 and _order2 must have the same erc20Token
     * - erc20Token must be allowed
     * - _order1.lesor must be ownerOf(_order1.nftContractAddress, _order1.tokenId)
-    * - if beginning new rent: 
+    * - if beginning new lease: 
+    *     - there must be no active lease for given NFT
     *     - block.timestamp + _order2.duration must be lower or equal to 
     *       _order1 and _order2 maxExpiration
-    *     - rents[_order1.nftContractAddress][_order1.tokenId].until must be lower than
-    *       block.timestamp
-    * - if extending rent:
-    *     - _order2.duration + rents[_order1.nftContractAddress][_order1.tokenId].until
-    *       must be lower or equal to _order1 and _order2 maxExpiration
-    *     - rents[_order1.nftContractAddress][_order1.tokenId].until must be higher or equal
-    *       to block.timestamp
-    *     - rents[_order1.nftContractAddress][_order1.tokenId].lesee must be _order2.lesee
+    * - if extending lease:
+    *     - there must be an active lease for given NFT
+    *     - _order2.duration + current lease expiration must be lower or equal to _order1 and 
+    *       _order2 maxExpiration
+    *     - _order2.lesee must be current lease lesee
     */
     function matchOrders(
         Order calldata _order1,
@@ -348,7 +346,7 @@ contract BasicRenting is Ownable2Step {
     * 
     * requirements:
     * - msg.sender must be ownerOf(_nftContractAddress, _tokenId)
-    * - rents[_nftContractAddress][_tokenId].until must be less than block.timestamp
+    * - leases[_nftContractAddress][_tokenId].expiration must be less than block.timestamp
     */
     function retrieveNft(address _nftContractAddress, uint256 _tokenId) external {
         require(ownerOf(_nftContractAddress, _tokenId) == msg.sender, "Not NFT owner");

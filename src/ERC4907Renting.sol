@@ -249,17 +249,15 @@ contract ERC4907Renting is Ownable2Step {
     * - _order1 and _order2 must have the same erc20Token
     * - erc20Token must be allowed
     * - _order1.lesor must be ownerOf(_order1.nftContractAddress, _order1.tokenId)
-    * - if beginning new rent: 
+    * - if beginning new lease: 
+    *     - there must be no active lease for given NFT
     *     - block.timestamp + _order2.duration must be lower or equal to 
-    *       _order1 and _order2 expiration
-    *     - getExpiration(_order1.nftContractAddress, _order1.tokenId) must be lower than
-    *       block.timestamp
-    * - if extending rent:
-    *     - _order2.duration + getExpiration(_order1.nftContractAddress, _order1.tokenId)
-    *       must be lower or equal to _order1 and _order2 expiration
-    *     - getExpiration(_order1.nftContractAddress, _order1.tokenId) must be higher or equal
-    *       to block.timestamp
-    *     - getUser(_order1.nftContractAddress, _order1.tokenId) must be _order2.lesee
+    *       _order1 and _order2 maxExpiration
+    * - if extending lease:
+    *     - there must be an active lease for given NFT
+    *     - _order2.duration + current lease expiration must be lower or equal to _order1 and 
+    *       _order2 maxExpiration
+    *     - _order2.lesee must be current lease lesee
     */
     function matchOrders(
         Order calldata _order1,
@@ -300,12 +298,12 @@ contract ERC4907Renting is Ownable2Step {
         uint256 total = _order1.price * _order2.duration;
         uint256 fee = total * erc20Tokens[_order1.erc20Token].feePercentage / 10_000;
 
-        IERC4907(_order1.nftContractAddress).setUser(_order1.tokenId, _order2.lesee, SafeCastLib.safeCastTo64(expiration));
-
         if(IERC721(_order1.nftContractAddress).ownerOf(_order1.tokenId) != address(this)) {
             owners[_order1.nftContractAddress][_order1.tokenId] = _order1.lesor;
             IERC721(_order1.nftContractAddress).transferFrom(_order1.lesor, address(this), _order1.tokenId);
         }
+
+        IERC4907(_order1.nftContractAddress).setUser(_order1.tokenId, _order2.lesee, SafeCastLib.safeCastTo64(expiration));
 
         ERC20(_order1.erc20Token).safeTransferFrom(_order2.lesee, address(this), total);
         ERC20(_order1.erc20Token).safeTransfer(_order1.lesor, total - fee);
