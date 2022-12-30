@@ -2,7 +2,7 @@
 pragma solidity ^0.8.0;
 
 import {ERC721} from "@openzeppelin/contracts/token/ERC721/ERC721.sol";
-import {IERC4907} from "../libraries/IERC4907.sol";
+import {IERC4907} from "../interfaces/IERC4907.sol";
 
 contract ERC4907 is ERC721, IERC4907 {
     struct UserInfo 
