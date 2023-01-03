@@ -1,11 +1,10 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.13;
 
+import {RentingCore} from "./RentingCore.sol";
 import {ERC20} from "solmate/tokens/ERC20.sol";
 import {SafeTransferLib} from "solmate/utils/SafeTransferLib.sol";
 import {IERC721} from "@openzeppelin/contracts/token/ERC721/IERC721.sol";
-import {SignatureChecker} from "@openzeppelin/contracts/utils/cryptography/SignatureChecker.sol";
-import {Ownable2Step} from "@openzeppelin/contracts/access/Ownable2Step.sol";
 
 /**
 * @author gasperpre
@@ -21,18 +20,10 @@ import {Ownable2Step} from "@openzeppelin/contracts/access/Ownable2Step.sol";
 * NOTICE: This smart contract is NOT audited or even well tested and should NOT be used in
 * production before conducting a security review.
 */
-contract BasicRenting is Ownable2Step {
+contract BasicRenting is RentingCore {
     using SafeTransferLib for ERC20;
 
-
     /*--------------- STRUCTS ---------------*/
-
-    struct ERC20Token {
-        /* ERC20 token is allowed flag */
-        bool isAllowed;
-        /* ERC20 platform fee percentage, 100 = 1% */
-        uint32 feePercentage;
-    }
 
     struct Order {
         /* ERC721 contract address */
@@ -68,67 +59,31 @@ contract BasicRenting is Ownable2Step {
     bytes32 constant ORDER_TYPEHASH = keccak256(
         "Order(address nftContractAddress,uint256 tokenId,address lesor,address lesee,address erc20Token,uint136 price,uint40 duration,uint40 maxExpiration,uint40 salt)"
     );
-    
-    bytes32 immutable DOMAIN_SEPARATOR;
 
 
     /*--------------- MAPPINGS ---------------*/
 
     /* nftContractAddress => tokenId => Lease */
     mapping(address => mapping(uint256 => Lease)) public leases;
-    /* nftContractAddress => tokenId => Owner . Store the owner of nft when nft is transferred to contract */
+    /* nftContractAddress => tokenId => Owner */
     mapping(address => mapping(uint256 => address)) public owners;
-    /* erc20Token => ERC20Token */
-    mapping(address => ERC20Token) public erc20Tokens; 
-    /* orderCreator => orderHash => filled */
-    mapping(address => mapping(bytes32 => bool)) public filledOrCanceled;
-
 
     /*--------------- EVENTS ---------------*/
 
     event OrdersMatched(
-        address nftContractAddress,
-        uint256 tokenId,
+        address indexed nftContractAddress,
+        uint256 indexed tokenId,
         address lesor,
         address lesee,
         address erc20Token,
         uint256 price,
-        uint256 duration,
         uint256 expiration,
         uint256 fee
     );
 
-    event OrderFilled(
-        address signer,
-        bytes32 order
-    );
-
-    event OrderCanceled(
-        address signer,
-        bytes32 order
-    );
-
-    event ERC20Set(
-        address erc20Token,
-        bool isAllowed,
-        uint32 feePercentage
-    );
-
-
     /*--------------- CONSTRUCTOR ---------------*/
 
-    constructor() {
-        DOMAIN_SEPARATOR = keccak256(
-            abi.encode(
-                keccak256(
-                    "EIP712Domain(string name,string version,uint256 chainId,address verifyingContract)"
-                ),
-                keccak256(bytes("BasicRenting")),
-                keccak256(bytes("1")),
-                block.chainid,
-                address(this)
-            )
-        );
+    constructor() RentingCore("BasicRenting", "1") {
     }
 
 
@@ -188,58 +143,6 @@ contract BasicRenting is Ownable2Step {
             _order.maxExpiration,
             _order.salt
         ));
-    }
-
-    function hashToSign(bytes32 _orderHash)
-        public
-        view
-        returns (bytes32 hash)
-    {
-        return keccak256(abi.encodePacked(
-            "\x19\x01",
-            DOMAIN_SEPARATOR,
-            _orderHash
-        ));
-    }
-    
-    function _requireNotFilledOrCanceled(address _signer, bytes32 _orderHash) internal view {
-        require(!filledOrCanceled[_signer][_orderHash], "Already filledOrCanceled");
-    }
-
-    function _requireValidSignature(address _signer, bytes32 _orderHash, bytes calldata _signature) internal view {
-        require(
-                SignatureChecker.isValidSignatureNow(_signer, hashToSign(_orderHash), _signature),
-                "Invalid signature"
-        );
-    }
-
-    /**
-    * @notice Flag orderHash for signer as filledOrCanceled
-    * @param _signer - Order signer address
-    * @param _orderHash - Order hash
-    * 
-    * requiremetns:
-    * - orderHash for signer must not be flaged filledOrCanceled
-    */
-    function _fillOrCancelOrder(address _signer, bytes32 _orderHash) internal {
-        _requireNotFilledOrCanceled(_signer, _orderHash);
-        filledOrCanceled[_signer][_orderHash] = true;
-    }
-    
-    /**
-    * @notice Checks if order signature is valid and marks order as filled
-    * @param _signer - Order signer address
-    * @param _orderHash - Order hash
-    * @param _signature - Order signature by the signer
-    * 
-    * requiremetns:
-    * - _signature must be valid for given orderHash and signer address
-    * - _orderHash for _signer must not be flaged filledOrCanceled
-    */
-    function _fillOrder(address _signer, bytes32 _orderHash, bytes calldata _signature) internal {
-            _requireValidSignature(_signer, _orderHash, _signature);
-            _fillOrCancelOrder(_signer, _orderHash);
-            emit OrderFilled(_signer, _orderHash);
     }
 
     /*--------------- EXTERNAL ---------------*/
@@ -324,19 +227,7 @@ contract BasicRenting is Ownable2Step {
         ERC20(_order1.erc20Token).safeTransferFrom(_order2.lesee, address(this), total);
         ERC20(_order1.erc20Token).safeTransfer(_order1.lesor, total - fee);
 
-        emit OrdersMatched(_order1.nftContractAddress, _order1.tokenId, _order1.lesor, _order2.lesee, _order1.erc20Token, _order1.price, _order2.duration, expiration, fee);
-    }
-
-    /**
-    * @notice Flags order hash for msg.sender as filledOrCancelled
-    * @param _orderHash - hash of the order being canceled
-    *
-    * requirements:
-    * - _orderHash for msg.sender must not be flagged filledOrCancelled
-    */
-    function cancelOrder(bytes32 _orderHash) external {
-        _fillOrCancelOrder(msg.sender, _orderHash);
-        emit OrderCanceled(msg.sender, _orderHash);
+        emit OrdersMatched(_order1.nftContractAddress, _order1.tokenId, _order1.lesor, _order2.lesee, _order1.erc20Token, _order1.price, expiration, fee);
     }
 
     /**
@@ -371,21 +262,5 @@ contract BasicRenting is Ownable2Step {
     */
     function withdraw(address _currency, uint256 _amount) external onlyOwner {
         ERC20(_currency).transfer(msg.sender, _amount);
-    }
-
-    /**
-    * @notice Set ERC20 token isAllowed and feePercentage
-    * @param _erc20Token - address of ERC20 token
-    * @param _isAllowed - isAllowed flag
-    * @param _feePercentage - platform fee percentage
-    * 
-    * requirements:
-    * - _feePercentage must be less or equal to 1000 (10%)
-    */
-    function setERC20Token(address _erc20Token, bool _isAllowed, uint32 _feePercentage) external onlyOwner {
-        require(_feePercentage <= 1000, "Fee too high");
-        erc20Tokens[_erc20Token].isAllowed = _isAllowed;
-        erc20Tokens[_erc20Token].feePercentage = _feePercentage;
-        emit ERC20Set(_erc20Token, _isAllowed, _feePercentage);
     }
 }
