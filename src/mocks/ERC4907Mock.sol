@@ -1,10 +1,10 @@
 // SPDX-License-Identifier: CC0-1.0
 pragma solidity ^0.8.0;
 
-import {ERC721} from "@openzeppelin/contracts/token/ERC721/ERC721.sol";
+import {ERC721Mock} from "@openzeppelin/contracts/mocks/ERC721Mock.sol";
 import {IERC4907} from "../interfaces/IERC4907.sol";
 
-contract ERC4907 is ERC721, IERC4907 {
+contract ERC4907Mock is ERC721Mock, IERC4907 {
     struct UserInfo 
     {
         address user;   // address of user role
@@ -14,7 +14,7 @@ contract ERC4907 is ERC721, IERC4907 {
     mapping (uint256  => UserInfo) internal _users;
 
     constructor(string memory name_, string memory symbol_)
-     ERC721(name_, symbol_)
+     ERC721Mock(name_, symbol_)
      {
      }
     
@@ -23,7 +23,7 @@ contract ERC4907 is ERC721, IERC4907 {
     /// Throws if `tokenId` is not valid NFT
     /// @param user  The new user of the NFT
     /// @param expires  UNIX timestamp, The new user could use the NFT before expires
-    function setUser(uint256 tokenId, address user, uint64 expires) public virtual{
+    function setUser(uint256 tokenId, address user, uint64 expires) external {
         require(_isApprovedOrOwner(msg.sender, tokenId), "ERC4907: transfer caller is not owner nor approved");
         UserInfo storage info =  _users[tokenId];
         info.user = user;
@@ -35,7 +35,7 @@ contract ERC4907 is ERC721, IERC4907 {
     /// @dev The zero address indicates that there is no user or the user is expired
     /// @param tokenId The NFT to get the user address for
     /// @return The user address for this NFT
-    function userOf(uint256 tokenId) public view virtual returns(address){
+    function userOf(uint256 tokenId) external view returns(address){
         if( uint256(_users[tokenId].expires) >=  block.timestamp){
             return  _users[tokenId].user;
         }
@@ -48,7 +48,7 @@ contract ERC4907 is ERC721, IERC4907 {
     /// @dev The zero value indicates that there is no user
     /// @param tokenId The NFT to get the user expires for
     /// @return The user expires for this NFT
-    function userExpires(uint256 tokenId) public view virtual returns(uint256){
+    function userExpires(uint256 tokenId) external view returns(uint256){
         return _users[tokenId].expires;
     }
 
