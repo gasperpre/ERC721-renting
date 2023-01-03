@@ -13,7 +13,8 @@ import {ERC721} from "@openzeppelin/contracts/token/ERC721/ERC721.sol";
 * The purpose of this smart contract is to enable ERC721 renting without the need for the 
 * ERC721 contracts to support any special renting standard.
 * The lesee has to lock ERC20 collateral in this contract for the duration of lease. If he
-* does not return the leased NFT, the collateral can be claimed by lesor.
+* does not return the leased NFT by executing closeLease, the lease can be liquidated and 
+* collateral sent to lesor by executing liquidateLease.
 * Lease is represented by an ERC721 token. Owner of this token is considerred lesor and
 * is the one who will receive NFT or collateral when lease ends.
 * When creating a new lease, the owner of NFT (lesor) should construct an Order and sign
