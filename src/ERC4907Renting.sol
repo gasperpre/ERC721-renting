@@ -115,19 +115,19 @@ contract ERC4907Renting is RentingCore {
 
     function _getUser(address _nftContractAddress, uint256 _tokenId) internal view returns(address user) {
         (bool success, bytes memory data) = _nftContractAddress.staticcall(
-            abi.encodeWithSignature('userOf(uint256 tokenId)',_tokenId)
+            abi.encodeWithSignature('userOf(uint256)',_tokenId)
             );
 
-        require(success, "getUser failed");
+        require(success, "userOf failed");
         (user) = abi.decode(data, (address));
     }
 
     function _getExpiration(address _nftContractAddress, uint256 _tokenId) internal view returns(uint256 expiration) {
         (bool success, bytes memory data) = _nftContractAddress.staticcall(
-            abi.encodeWithSignature('userExpires(uint256 tokenId)',_tokenId)
+            abi.encodeWithSignature("userExpires(uint256)", _tokenId)
             );
 
-        require(success, "getExpiraion failed");
+        require(success, "userExpires failed");
         (expiration) = abi.decode(data, (uint256));
     }
 
