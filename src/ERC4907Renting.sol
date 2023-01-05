@@ -56,7 +56,7 @@ contract ERC4907Renting is RentingCore {
     
     /*--------------- MAPPINGS ---------------*/
 
-    /* nftContractAddress => tokenId => Owner . Store the owner of nft when nft is transferred to contract */
+    /* nftContractAddress => tokenId => Owner */
     mapping(address => mapping(uint256 => address)) public owners;
 
     /*--------------- EVENTS ---------------*/
