@@ -179,14 +179,12 @@ contract CollateralizedRenting is RentingCore {
             _fillOrder(_order2.lesee, hashOrder(_order2), _signature2);
         }
 
-        uint256 leaseId = leaseCounter++;
         Lease memory lease = Lease(_order1.nftContractAddress, _order1.tokenId, SafeCastLib.safeCastTo128(expiration), _order1.collateral, _order1.erc20Token);
+        uint256 leaseId = _mint(_order1.lesor);
         leases[leaseId] = lease;
 
         uint256 total = _order1.price * _order2.duration;
         uint256 fee = total * erc20Tokens[_order1.erc20Token].feePercentage / 10_000;
-
-        _mint(_order1.lesor, leaseId);
 
         IERC721(_order1.nftContractAddress).transferFrom(_order1.lesor, _order2.lesee, _order1.tokenId);
 

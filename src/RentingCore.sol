@@ -110,6 +110,11 @@ contract RentingCore is ERC721, Ownable2Step, AllowedERC20 {
             emit OrderFilled(_signer, _orderHash);
     }
 
+    function _mint(address _to) internal returns (uint256 id){
+        id = ++leaseCounter;
+        _mint(_to, id);
+    }
+
     /*--------------- EXTERNAL ---------------*/
 
     /**

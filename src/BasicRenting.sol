@@ -210,27 +210,21 @@ contract BasicRenting is RentingCore {
             _fillOrder(_order2.lesee, order2Hash, _signature2);
         }
     
+        uint256 total = _order1.price * _order2.duration;
+        uint256 fee = total * erc20Tokens[_order1.erc20Token].feePercentage / 10_000;
+        
         lease.lesee = _order2.lesee;
         lease.expiration = expiration;
 
-        uint256 leaseId = lease.id;
-
-        if(leaseId == 0) {
-            leaseId = ++leaseCounter;
-            lease.id = leaseId;
-            _mint(_order1.lesor, leaseId);
+        if(lease.id == 0) {
+            lease.id = _mint(_order1.lesor);
             IERC721(_order1.nftContractAddress).transferFrom(_order1.lesor, address(this), _order1.tokenId);
         }
 
-        uint256 total = _order1.price * _order2.duration;
+        ERC20(_order1.erc20Token).safeTransferFrom(_order2.lesee, address(this), total);
+        ERC20(_order1.erc20Token).safeTransfer(_order1.lesor, total - fee);
 
-        { // avoiding stack too deep
-            uint256 fee = total * erc20Tokens[_order1.erc20Token].feePercentage / 10_000;
-            ERC20(_order1.erc20Token).safeTransferFrom(_order2.lesee, address(this), total);
-            ERC20(_order1.erc20Token).safeTransfer(_order1.lesor, total - fee);
-        }
-
-        emit OrdersMatched(leaseId, _order1.nftContractAddress, _order1.tokenId, _order1.lesor, _order2.lesee, _order1.erc20Token, total, expiration);
+        emit OrdersMatched(lease.id, _order1.nftContractAddress, _order1.tokenId, _order1.lesor, _order2.lesee, _order1.erc20Token, total, expiration);
     }
 
     /**

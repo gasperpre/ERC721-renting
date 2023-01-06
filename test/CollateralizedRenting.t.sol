@@ -68,7 +68,7 @@ contract CounterTest is Test {
         vm.prank(address(this));
         collateralizedRenting.matchOrders(orderBob, orderAlice, abi.encodePacked(rB,sB,vB), abi.encodePacked(rA,sA,vA));
 
-        (address nftContractAddress, uint256 tokenId, uint128 expiration, uint128 collateral, address erc20Token) = collateralizedRenting.leases(0);
+        (address nftContractAddress, uint256 tokenId, uint128 expiration, uint128 collateral, address erc20Token) = collateralizedRenting.leases(1);
 
         assertEq(expiration, block.timestamp + 100);
         assertEq(nftContractAddress, address(erc721Mock));
@@ -76,6 +76,6 @@ contract CounterTest is Test {
         assertEq(collateral, 1e18);
         assertEq(erc20Token, address(erc20Mock));
         assertEq(erc721Mock.ownerOf(1), alice);
-        assertEq(collateralizedRenting.ownerOf(0), bob);
+        assertEq(collateralizedRenting.ownerOf(1), bob);
     }
 }

@@ -200,9 +200,8 @@ contract ERC4907Renting is RentingCore {
         uint256 leaseId = nftToLeaseId[_order1.nftContractAddress][_order1.tokenId];
 
         if(leaseId == 0) {
-            leaseId = ++leaseCounter;
+            leaseId = _mint(_order1.lesor);
             nftToLeaseId[_order1.nftContractAddress][_order1.tokenId] = leaseId;
-            _mint(_order1.lesor, leaseId);
             IERC721(_order1.nftContractAddress).transferFrom(_order1.lesor, address(this), _order1.tokenId);
         }
 
