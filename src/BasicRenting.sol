@@ -47,6 +47,7 @@ contract BasicRenting is RentingCore {
     }
 
     struct Lease {
+        uint256 id;
         /* User address */
         address lesee;
         /* Lease expiration timestamp */
@@ -60,30 +61,27 @@ contract BasicRenting is RentingCore {
         "Order(address nftContractAddress,uint256 tokenId,address lesor,address lesee,address erc20Token,uint136 price,uint40 duration,uint40 maxExpiration,uint40 salt)"
     );
 
-
     /*--------------- MAPPINGS ---------------*/
 
     /* nftContractAddress => tokenId => Lease */
     mapping(address => mapping(uint256 => Lease)) public leases;
-    /* nftContractAddress => tokenId => Owner */
-    mapping(address => mapping(uint256 => address)) public owners;
 
     /*--------------- EVENTS ---------------*/
 
     event OrdersMatched(
+        uint256 indexed leaseId,
         address indexed nftContractAddress,
         uint256 indexed tokenId,
         address lesor,
         address lesee,
         address erc20Token,
-        uint256 price,
-        uint256 expiration,
-        uint256 fee
+        uint256 total,
+        uint256 expiration
     );
 
     /*--------------- CONSTRUCTOR ---------------*/
 
-    constructor() RentingCore("BasicRenting", "1") {
+    constructor() RentingCore("BasicLease", "BL", "1") {
     }
 
 
@@ -99,7 +97,7 @@ contract BasicRenting is RentingCore {
         nftOwner = IERC721(_nftContractAddress).ownerOf(_tokenId);
 
         if(nftOwner == address(this)) {
-            nftOwner = owners[_nftContractAddress][_tokenId];
+            nftOwner = _ownerOf(leases[_nftContractAddress][_tokenId].id); // lease IDs start with 1 so _ownerOf(0) will always be address(0)
         }
     }
     
@@ -189,7 +187,6 @@ contract BasicRenting is RentingCore {
         require(_order1.erc20Token == _order2.erc20Token && erc20Tokens[_order1.erc20Token].isAllowed, "Bad ERC20");
         require(ownerOf(_order1.nftContractAddress, _order1.tokenId) == _order1.lesor, "Invalid token owner");
 
-
         Lease storage lease = leases[_order1.nftContractAddress][_order1.tokenId];
         uint256 expiration;
         
@@ -216,18 +213,24 @@ contract BasicRenting is RentingCore {
         lease.lesee = _order2.lesee;
         lease.expiration = expiration;
 
-        uint256 total = _order1.price * _order2.duration;
-        uint256 fee = total * erc20Tokens[_order1.erc20Token].feePercentage / 10_000;
+        uint256 leaseId = lease.id;
 
-        if(IERC721(_order1.nftContractAddress).ownerOf(_order1.tokenId) != address(this)) {
-            owners[_order1.nftContractAddress][_order1.tokenId] = _order1.lesor;
+        if(leaseId == 0) {
+            leaseId = ++leaseCounter;
+            lease.id = leaseId;
+            _mint(_order1.lesor, leaseId);
             IERC721(_order1.nftContractAddress).transferFrom(_order1.lesor, address(this), _order1.tokenId);
         }
 
-        ERC20(_order1.erc20Token).safeTransferFrom(_order2.lesee, address(this), total);
-        ERC20(_order1.erc20Token).safeTransfer(_order1.lesor, total - fee);
+        uint256 total = _order1.price * _order2.duration;
 
-        emit OrdersMatched(_order1.nftContractAddress, _order1.tokenId, _order1.lesor, _order2.lesee, _order1.erc20Token, _order1.price, expiration, fee);
+        { // avoiding stack too deep
+            uint256 fee = total * erc20Tokens[_order1.erc20Token].feePercentage / 10_000;
+            ERC20(_order1.erc20Token).safeTransferFrom(_order2.lesee, address(this), total);
+            ERC20(_order1.erc20Token).safeTransfer(_order1.lesor, total - fee);
+        }
+
+        emit OrdersMatched(leaseId, _order1.nftContractAddress, _order1.tokenId, _order1.lesor, _order2.lesee, _order1.erc20Token, total, expiration);
     }
 
     /**
@@ -243,8 +246,8 @@ contract BasicRenting is RentingCore {
         require(ownerOf(_nftContractAddress, _tokenId) == msg.sender, "Not NFT owner");
         require(leases[_nftContractAddress][_tokenId].expiration < block.timestamp, "Not expired");
 
+        _burn(leases[_nftContractAddress][_tokenId].id);
         delete leases[_nftContractAddress][_tokenId];
-        delete owners[_nftContractAddress][_tokenId];
 
         IERC721(_nftContractAddress).transferFrom(address(this), msg.sender, _tokenId);
     }

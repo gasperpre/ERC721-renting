@@ -5,7 +5,7 @@ import {RentingCore} from "./RentingCore.sol";
 import {ERC20} from "solmate/tokens/ERC20.sol";
 import {SafeTransferLib} from "solmate/utils/SafeTransferLib.sol";
 import {SafeCastLib} from "solmate/utils/SafeCastLib.sol";
-import {ERC721} from "@openzeppelin/contracts/token/ERC721/ERC721.sol";
+import {IERC721} from "@openzeppelin/contracts/token/ERC721/IERC721.sol";
 
 /**
 * @author gasperpre
@@ -24,7 +24,7 @@ import {ERC721} from "@openzeppelin/contracts/token/ERC721/ERC721.sol";
 * NOTICE: This smart contract is NOT audited or even well tested and should NOT be used in
 * production before conducting a security review.
 */
-contract CollateralizedRenting is RentingCore, ERC721 {
+contract CollateralizedRenting is RentingCore {
     using SafeTransferLib for ERC20;
 
     /*--------------- STRUCTS ---------------*/
@@ -74,7 +74,6 @@ contract CollateralizedRenting is RentingCore, ERC721 {
 
     /*--------------- VARIABLES ---------------*/
 
-    uint256 leaseCounter;
     address feeReceiver;
 
     /*--------------- MAPPINGS ---------------*/
@@ -89,8 +88,7 @@ contract CollateralizedRenting is RentingCore, ERC721 {
         Lease lease,
         address lesor,
         address lesee,
-        uint256 price,
-        uint256 fee
+        uint256 total
     );
 
     event LeaseClosed(
@@ -105,7 +103,7 @@ contract CollateralizedRenting is RentingCore, ERC721 {
 
     /*--------------- CONSTRUCTOR ---------------*/
 
-    constructor(address _feeReceiver) RentingCore("CollateralizedRenting", "1") ERC721("Lease", "LS") {
+    constructor(address _feeReceiver) RentingCore("CollateralizedLease", "CL", "1") {
         feeReceiver = _feeReceiver;
     }
 
@@ -166,7 +164,7 @@ contract CollateralizedRenting is RentingCore, ERC721 {
         require(_order1.duration <= _order2.duration, "Order.duration missmatch");
         require(_order1.collateral <= _order2.collateral, "Order.collateral missmatch");
         require(_order1.erc20Token == _order2.erc20Token && erc20Tokens[_order1.erc20Token].isAllowed, "Bad ERC20");
-        require(ERC721(_order1.nftContractAddress).ownerOf(_order1.tokenId) == _order1.lesor, "Invalid token owner");
+        require(IERC721(_order1.nftContractAddress).ownerOf(_order1.tokenId) == _order1.lesor, "Invalid token owner");
 
         uint256 expiration = block.timestamp + _order2.duration;
 
@@ -190,7 +188,7 @@ contract CollateralizedRenting is RentingCore, ERC721 {
 
         _mint(_order1.lesor, leaseId);
 
-        ERC721(_order1.nftContractAddress).transferFrom(_order1.lesor, _order2.lesee, _order1.tokenId);
+        IERC721(_order1.nftContractAddress).transferFrom(_order1.lesor, _order2.lesee, _order1.tokenId);
 
         if(fee > 0) {
             ERC20(_order1.erc20Token).safeTransferFrom(_order2.lesee, feeReceiver, fee);
@@ -204,8 +202,7 @@ contract CollateralizedRenting is RentingCore, ERC721 {
             lease,
             _order1.lesor,
             _order2.lesee,
-            _order1.price,
-            fee
+            total
             );
     }
 
@@ -218,7 +215,7 @@ contract CollateralizedRenting is RentingCore, ERC721 {
     * - msg.sender must be the NFT owner
     */
     function closeLease(uint256 _leaseId, address _nftContractAddress, uint256 _tokenId) external {
-        require(ERC721(_nftContractAddress).ownerOf(_tokenId) == msg.sender, "Not token owner");
+        require(IERC721(_nftContractAddress).ownerOf(_tokenId) == msg.sender, "Not token owner");
         Lease memory lease = leases[_leaseId];
         require(lease.tokenId == _tokenId && lease.nftContractAddress == _nftContractAddress, "Token missmatch");
 
@@ -228,7 +225,7 @@ contract CollateralizedRenting is RentingCore, ERC721 {
         _burn(_leaseId);
 
         ERC20(lease.erc20Token).safeTransfer(msg.sender, lease.collateral);
-        ERC721(_nftContractAddress).transferFrom(msg.sender, to, _tokenId);
+        IERC721(_nftContractAddress).transferFrom(msg.sender, to, _tokenId);
 
         emit LeaseClosed(_leaseId, msg.sender);
     }

@@ -56,25 +56,25 @@ contract ERC4907Renting is RentingCore {
     
     /*--------------- MAPPINGS ---------------*/
 
-    /* nftContractAddress => tokenId => Owner */
-    mapping(address => mapping(uint256 => address)) public owners;
+    /* nftContractAddress => tokenId => leaseId */
+    mapping(address => mapping(uint256 => uint256)) public nftToLeaseId;
 
     /*--------------- EVENTS ---------------*/
 
     event OrdersMatched(
+        uint256 indexed leaseId,
         address indexed nftContractAddress,
         uint256 indexed tokenId,
         address lesor,
         address lesee,
         address erc20Token,
-        uint256 price,
-        uint256 expiration,
-        uint256 fee
+        uint256 total,
+        uint256 expiration
     );
 
     /*--------------- CONSTRUCTOR ---------------*/
 
-    constructor() RentingCore("ERC4907Renting", "1") {
+    constructor() RentingCore("ERC4907Lease", "EL", "1") {
     }
 
     /*--------------- VIEWS ---------------*/
@@ -89,7 +89,7 @@ contract ERC4907Renting is RentingCore {
         nftOwner = IERC721(_nftContractAddress).ownerOf(_tokenId);
 
         if(nftOwner == address(this)) {
-            nftOwner = owners[_nftContractAddress][_tokenId];
+            nftOwner = _ownerOf(nftToLeaseId[_nftContractAddress][_tokenId]); // lease IDs start with 1 so _ownerOf(0) will always be address(0)
         }
     }
 
@@ -187,21 +187,22 @@ contract ERC4907Renting is RentingCore {
         require(expiration <= _order1.maxExpiration && expiration <= _order2.maxExpiration, "maxExpiration reached");
         
         if(_order1.lesor != msg.sender) {
-            bytes32 order1Hash = hashOrder(_order1);
-            _fillOrder(_order1.lesor, order1Hash, _signature1);
+            _fillOrder(_order1.lesor, hashOrder(_order1), _signature1);
         }
 
         if(_order2.lesee != msg.sender) {
-            bytes32 order2Hash = hashOrder(_order2);
-            _fillOrder(_order2.lesee, order2Hash, _signature2);
+            _fillOrder(_order2.lesee, hashOrder(_order2), _signature2);
         }
 
 
         uint256 total = _order1.price * _order2.duration;
         uint256 fee = total * erc20Tokens[_order1.erc20Token].feePercentage / 10_000;
+        uint256 leaseId = nftToLeaseId[_order1.nftContractAddress][_order1.tokenId];
 
-        if(IERC721(_order1.nftContractAddress).ownerOf(_order1.tokenId) != address(this)) {
-            owners[_order1.nftContractAddress][_order1.tokenId] = _order1.lesor;
+        if(leaseId == 0) {
+            leaseId = ++leaseCounter;
+            nftToLeaseId[_order1.nftContractAddress][_order1.tokenId] = leaseId;
+            _mint(_order1.lesor, leaseId);
             IERC721(_order1.nftContractAddress).transferFrom(_order1.lesor, address(this), _order1.tokenId);
         }
 
@@ -210,7 +211,7 @@ contract ERC4907Renting is RentingCore {
         ERC20(_order1.erc20Token).safeTransferFrom(_order2.lesee, address(this), total);
         ERC20(_order1.erc20Token).safeTransfer(_order1.lesor, total - fee);
 
-        emit OrdersMatched(_order1.nftContractAddress, _order1.tokenId, _order1.lesor, _order2.lesee, _order1.erc20Token, _order1.price, expiration, fee);
+        emit OrdersMatched(leaseId, _order1.nftContractAddress, _order1.tokenId, _order1.lesor, _order2.lesee, _order1.erc20Token, total, expiration);
     }
 
     /**
@@ -226,7 +227,8 @@ contract ERC4907Renting is RentingCore {
         require(ownerOf(_nftContractAddress, _tokenId) == msg.sender, "Not NFT owner");
         require(_getExpiration(_nftContractAddress, _tokenId) < block.timestamp, "Not expired");
 
-        delete owners[_nftContractAddress][_tokenId];
+        _burn(nftToLeaseId[_nftContractAddress][_tokenId]);
+        delete nftToLeaseId[_nftContractAddress][_tokenId];
 
         IERC721(_nftContractAddress).transferFrom(address(this), msg.sender, _tokenId);
     }

@@ -66,8 +66,9 @@ contract CounterTest is Test {
         vm.prank(address(this));
         basicRenting.matchOrders(orderBob, orderAlice, abi.encodePacked(rB,sB,vB), abi.encodePacked(rA,sA,vA));
 
-        (address lesee, uint256 expiration)= basicRenting.leases(address(erc721Mock), 1);
+        (uint256 id, address lesee, uint256 expiration)= basicRenting.leases(address(erc721Mock), 1);
 
+        assertEq(id, 1);
         assertEq(lesee, alice);
         assertEq(expiration, block.timestamp + 100);
         assertEq(basicRenting.userOf(address(erc721Mock), 1), alice);

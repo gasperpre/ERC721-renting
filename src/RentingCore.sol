@@ -3,6 +3,7 @@ pragma solidity ^0.8.13;
 
 import {SignatureChecker} from "@openzeppelin/contracts/utils/cryptography/SignatureChecker.sol";
 import {Ownable2Step} from "@openzeppelin/contracts/access/Ownable2Step.sol";
+import {ERC721} from "@openzeppelin/contracts/token/ERC721/ERC721.sol";
 import {AllowedERC20} from "./utils/AllowedERC20.sol";
 
 /**
@@ -11,11 +12,15 @@ import {AllowedERC20} from "./utils/AllowedERC20.sol";
 * The purpose of this smart contract is to hold the basic functions that are
 * intherited by all the renting types.
 */
-contract RentingCore is Ownable2Step, AllowedERC20 {
+contract RentingCore is ERC721, Ownable2Step, AllowedERC20 {
 
     /*--------------- CONSTANTS ---------------*/
     
     bytes32 immutable DOMAIN_SEPARATOR;
+
+    /*--------------- VARIABLES ---------------*/
+
+    uint256 leaseCounter;
 
     /*--------------- MAPPINGS ---------------*/
 
@@ -37,14 +42,14 @@ contract RentingCore is Ownable2Step, AllowedERC20 {
 
     /*--------------- CONSTRUCTOR ---------------*/
 
-    constructor(string memory name, string memory version) {
+    constructor(string memory _name, string memory _symbol,  string memory _version) ERC721(_name, _symbol) {
         DOMAIN_SEPARATOR = keccak256(
             abi.encode(
                 keccak256(
                     "EIP712Domain(string name,string version,uint256 chainId,address verifyingContract)"
                 ),
-                keccak256(bytes(name)),
-                keccak256(bytes(version)),
+                keccak256(bytes(_name)),
+                keccak256(bytes(_version)),
                 block.chainid,
                 address(this)
             )
