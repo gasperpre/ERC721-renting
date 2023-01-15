@@ -13,9 +13,9 @@ import {IERC721} from "@openzeppelin/contracts/token/ERC721/IERC721.sol";
 * and without the need for the ERC721 contracts to support any special renting standard.
 * The NFT being rented is locked in this contract for the duration of the lease.
 * To see who the NFT is being rented to `userOf(nftContractAddress, tokenId)` can be called.
-* The owner of NFT (lesor) should construct an Order and sign it off-chain.
-* Same goes for lesee (account who wants to use the NFT).
-* Lesor and lesee Orderds can be matched by anyone.
+* The owner of NFT (lessor) should construct an Order and sign it off-chain.
+* Same goes for lessee (account who wants to use the NFT).
+* Lessor and lessee Orderds can be matched by anyone.
 *
 * NOTICE: This smart contract is NOT audited or even well tested and should NOT be used in
 * production before conducting a security review.
@@ -30,10 +30,10 @@ contract BasicRenting is RentingCore {
         address nftContractAddress;
         /* NFT token ID */
         uint256 tokenId;
-        /* NFT owner address, address(0) on lesee side Order means anyone can be owner */
-        address lesor;
-        /* User address, address(0) on lesor side Order means anyone can become user */
-        address lesee;
+        /* NFT owner address, address(0) on lessee side Order means anyone can be owner */
+        address lessor;
+        /* User address, address(0) on lessor side Order means anyone can become user */
+        address lessee;
         /* Payment ERC20 token address, must be allowed */
         address erc20Token;
         /* Rental price per second */
@@ -49,7 +49,7 @@ contract BasicRenting is RentingCore {
     struct Lease {
         uint256 id;
         /* User address */
-        address lesee;
+        address lessee;
         /* Lease expiration timestamp */
         uint256 expiration;
     }
@@ -58,7 +58,7 @@ contract BasicRenting is RentingCore {
     /*--------------- CONSTANTS ---------------*/
 
     bytes32 constant ORDER_TYPEHASH = keccak256(
-        "Order(address nftContractAddress,uint256 tokenId,address lesor,address lesee,address erc20Token,uint136 price,uint40 duration,uint40 maxExpiration,uint40 salt)"
+        "Order(address nftContractAddress,uint256 tokenId,address lessor,address lessee,address erc20Token,uint136 price,uint40 duration,uint40 maxExpiration,uint40 salt)"
     );
 
     /*--------------- MAPPINGS ---------------*/
@@ -72,8 +72,8 @@ contract BasicRenting is RentingCore {
         uint256 indexed leaseId,
         address indexed nftContractAddress,
         uint256 indexed tokenId,
-        address lesor,
-        address lesee,
+        address lessor,
+        address lessee,
         address erc20Token,
         uint256 total,
         uint256 expiration
@@ -102,14 +102,14 @@ contract BasicRenting is RentingCore {
     }
     
     /**
-    * @notice returns current user (lesee) of given NFT
+    * @notice returns current user (lessee) of given NFT
     * @param _nftContractAddress - address of ERC721 contract
     * @param _tokenId - NFT token ID
     * @return user - address that currently has user rights for the NFT or address(0) if no one has.
     */
     function userOf(address _nftContractAddress, uint256 _tokenId) external view returns(address user) {
         if(leases[_nftContractAddress][_tokenId].expiration >= block.timestamp) {
-            user = leases[_nftContractAddress][_tokenId].lesee;
+            user = leases[_nftContractAddress][_tokenId].lessee;
         }
     }
 
@@ -133,8 +133,8 @@ contract BasicRenting is RentingCore {
         return keccak256(abi.encode(
             ORDER_TYPEHASH,
             _order.nftContractAddress,
-            _order.lesor,
-            _order.lesee,
+            _order.lessor,
+            _order.lessee,
             _order.erc20Token,
             _order.price,
             _order.duration,
@@ -146,23 +146,23 @@ contract BasicRenting is RentingCore {
     /*--------------- EXTERNAL ---------------*/
 
     /**
-    * @notice Match two orders, one from owner (lesor) side and one from user (lesee) side.
+    * @notice Match two orders, one from owner (lessor) side and one from user (lessee) side.
     * @notice Can create a new lease or extend an existing one.
-    * @param _order1 - Order created by the ERC721 owner (lesor)
-    * @param _order2 - Order created by account wanting to use the ERC721 (lesee)
-    * @param _signature1 - ECDSA or ERC1271 signature of _order1 from the _order1.lesor address,
-    *                      not required if msg.sender == _order1.lesor 
-    * @param _signature2 - ECDSA or ERC1271 singature of _order2 from the _order2.lesee address,
-    *                      not required if msg.sender == _order2.lesee
+    * @param _order1 - Order created by the ERC721 owner (lessor)
+    * @param _order2 - Order created by account wanting to use the ERC721 (lessee)
+    * @param _signature1 - ECDSA or ERC1271 signature of _order1 from the _order1.lessor address,
+    *                      not required if msg.sender == _order1.lessor 
+    * @param _signature2 - ECDSA or ERC1271 singature of _order2 from the _order2.lessee address,
+    *                      not required if msg.sender == _order2.lessee
     * requirements:
     * - _order1 and _order2 must have the same nftContractAddress and tokenId 
-    * - _order1.lesee must be address(0) or equal to _order2.lesee
-    * - _order2.lesor must be address(0) or equal to _order1.lesor
+    * - _order1.lessee must be address(0) or equal to _order2.lessee
+    * - _order2.lessor must be address(0) or equal to _order1.lessor
     * - _order1.price must be lower or equal to _order2.price
     * - _order1.duration must be lower or equal to _order2.duration
     * - _order1 and _order2 must have the same erc20Token
     * - erc20Token must be allowed
-    * - _order1.lesor must be ownerOf(_order1.nftContractAddress, _order1.tokenId)
+    * - _order1.lessor must be ownerOf(_order1.nftContractAddress, _order1.tokenId)
     * - if beginning new lease: 
     *     - there must be no active lease for given NFT
     *     - block.timestamp + _order2.duration must be lower or equal to 
@@ -171,7 +171,7 @@ contract BasicRenting is RentingCore {
     *     - there must be an active lease for given NFT
     *     - _order2.duration + current lease expiration must be lower or equal to _order1 and 
     *       _order2 maxExpiration
-    *     - _order2.lesee must be current lease lesee
+    *     - _order2.lessee must be current lease lessee
     */
     function matchOrders(
         Order calldata _order1,
@@ -180,18 +180,18 @@ contract BasicRenting is RentingCore {
         bytes calldata _signature2
     ) external {
         require(_order1.nftContractAddress == _order2.nftContractAddress && _order1.tokenId == _order2.tokenId, "Token missmatch");
-        require(_order1.lesee == address(0) || _order1.lesee == _order2.lesee, "Order.lesee missmatch");
-        require(_order2.lesor == address(0) || _order2.lesor == _order1.lesor, "Order.lesor missmatch");
+        require(_order1.lessee == address(0) || _order1.lessee == _order2.lessee, "Order.lessee missmatch");
+        require(_order2.lessor == address(0) || _order2.lessor == _order1.lessor, "Order.lessor missmatch");
         require(_order1.price <= _order2.price, "Order.price missmatch");
         require(_order1.duration <= _order2.duration, "Order.duration missmatch");
         require(_order1.erc20Token == _order2.erc20Token && erc20Tokens[_order1.erc20Token].isAllowed, "Bad ERC20");
-        require(ownerOf(_order1.nftContractAddress, _order1.tokenId) == _order1.lesor, "Invalid token owner");
+        require(ownerOf(_order1.nftContractAddress, _order1.tokenId) == _order1.lessor, "Invalid token owner");
 
         Lease storage lease = leases[_order1.nftContractAddress][_order1.tokenId];
         uint256 expiration;
         
         if(lease.expiration >= block.timestamp) {
-            require(lease.lesee == _order2.lesee, "Already rented");
+            require(lease.lessee == _order2.lessee, "Already rented");
             expiration = lease.expiration + _order2.duration; // extend the rent period
         } else {
             expiration = block.timestamp + _order2.duration;
@@ -200,31 +200,31 @@ contract BasicRenting is RentingCore {
         require(expiration <= _order1.maxExpiration && expiration <= _order2.maxExpiration, "maxExpiration reached");
 
         
-        if(_order1.lesor != msg.sender) {
+        if(_order1.lessor != msg.sender) {
             bytes32 order1Hash = hashOrder(_order1);
-            _fillOrder(_order1.lesor, order1Hash, _signature1);
+            _fillOrder(_order1.lessor, order1Hash, _signature1);
         }
 
-        if(_order2.lesee != msg.sender) {
+        if(_order2.lessee != msg.sender) {
             bytes32 order2Hash = hashOrder(_order2);
-            _fillOrder(_order2.lesee, order2Hash, _signature2);
+            _fillOrder(_order2.lessee, order2Hash, _signature2);
         }
     
         uint256 total = _order1.price * _order2.duration;
         uint256 fee = total * erc20Tokens[_order1.erc20Token].feePercentage / 10_000;
         
-        lease.lesee = _order2.lesee;
+        lease.lessee = _order2.lessee;
         lease.expiration = expiration;
 
         if(lease.id == 0) {
-            lease.id = _mint(_order1.lesor);
-            IERC721(_order1.nftContractAddress).transferFrom(_order1.lesor, address(this), _order1.tokenId);
+            lease.id = _mint(_order1.lessor);
+            IERC721(_order1.nftContractAddress).transferFrom(_order1.lessor, address(this), _order1.tokenId);
         }
 
-        ERC20(_order1.erc20Token).safeTransferFrom(_order2.lesee, address(this), total);
-        ERC20(_order1.erc20Token).safeTransfer(_order1.lesor, total - fee);
+        ERC20(_order1.erc20Token).safeTransferFrom(_order2.lessee, address(this), total);
+        ERC20(_order1.erc20Token).safeTransfer(_order1.lessor, total - fee);
 
-        emit OrdersMatched(lease.id, _order1.nftContractAddress, _order1.tokenId, _order1.lesor, _order2.lesee, _order1.erc20Token, total, expiration);
+        emit OrdersMatched(lease.id, _order1.nftContractAddress, _order1.tokenId, _order1.lessor, _order2.lessee, _order1.erc20Token, total, expiration);
     }
 
     /**

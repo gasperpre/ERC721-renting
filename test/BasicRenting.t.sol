@@ -34,8 +34,8 @@ contract CounterTest is Test {
         BasicRenting.Order memory orderBob = BasicRenting.Order({
             nftContractAddress: address(erc721Mock),
             tokenId: 1,
-            lesor: bob,
-            lesee: address(0),
+            lessor: bob,
+            lessee: address(0),
             erc20Token: address(erc20Mock),
             price: 1e16,
             duration: 100,
@@ -50,8 +50,8 @@ contract CounterTest is Test {
         BasicRenting.Order memory orderAlice = BasicRenting.Order({
             nftContractAddress: address(erc721Mock),
             tokenId: 1,
-            lesor: address(0),
-            lesee: alice,
+            lessor: address(0),
+            lessee: alice,
             erc20Token: address(erc20Mock),
             price: 1e16,
             duration: 100,
@@ -66,10 +66,10 @@ contract CounterTest is Test {
         vm.prank(address(this));
         basicRenting.matchOrders(orderBob, orderAlice, abi.encodePacked(rB,sB,vB), abi.encodePacked(rA,sA,vA));
 
-        (uint256 id, address lesee, uint256 expiration)= basicRenting.leases(address(erc721Mock), 1);
+        (uint256 id, address lessee, uint256 expiration)= basicRenting.leases(address(erc721Mock), 1);
 
         assertEq(id, 1);
-        assertEq(lesee, alice);
+        assertEq(lessee, alice);
         assertEq(expiration, block.timestamp + 100);
         assertEq(basicRenting.userOf(address(erc721Mock), 1), alice);
         assertEq(basicRenting.ownerOf(address(erc721Mock), 1), bob);

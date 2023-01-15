@@ -34,8 +34,8 @@ contract CounterTest is Test {
         CollateralizedRenting.Order memory orderBob = CollateralizedRenting.Order({
             nftContractAddress: address(erc721Mock),
             tokenId: 1,
-            lesor: bob,
-            lesee: address(0),
+            lessor: bob,
+            lessee: address(0),
             erc20Token: address(erc20Mock),
             price: 1e16,
             collateral: 1e18,
@@ -51,8 +51,8 @@ contract CounterTest is Test {
         CollateralizedRenting.Order memory orderAlice = CollateralizedRenting.Order({
             nftContractAddress: address(erc721Mock),
             tokenId: 1,
-            lesor: address(0),
-            lesee: alice,
+            lessor: address(0),
+            lessee: alice,
             erc20Token: address(erc20Mock),
             price: 1e16,
             collateral: 1e18,

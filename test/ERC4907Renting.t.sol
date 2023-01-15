@@ -34,8 +34,8 @@ contract CounterTest is Test {
         ERC4907Renting.Order memory orderBob = ERC4907Renting.Order({
             nftContractAddress: address(erc4907Mock),
             tokenId: 1,
-            lesor: bob,
-            lesee: address(0),
+            lessor: bob,
+            lessee: address(0),
             erc20Token: address(erc20Mock),
             price: 1e16,
             duration: 100,
@@ -50,8 +50,8 @@ contract CounterTest is Test {
         ERC4907Renting.Order memory orderAlice = ERC4907Renting.Order({
             nftContractAddress: address(erc4907Mock),
             tokenId: 1,
-            lesor: address(0),
-            lesee: alice,
+            lessor: address(0),
+            lessee: alice,
             erc20Token: address(erc20Mock),
             price: 1e16,
             duration: 100,
